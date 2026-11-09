@@ -865,9 +865,13 @@ def geometrie_einsetzen(archiv: erp.ErpFile, netz_npz: str, **optionen) -> dict:
     vorlagen = optionen.get('vorlagen') or vorlagen_lesen(archiv, materialien, codes)
     loch = loch_lesen(archiv)
     large_report = None
-    if optionen.get('large_world'):
-        from . import large_world
-        loch, large_report = large_world.expand(archiv, large_world.bounds(pos))
+    from . import large_world
+    if large_world.enabled(optionen):
+        target = large_world.target(optionen, pos)
+        if (pos[:, 0].min() <= target['x0'] or pos[:, 0].max() >= target['x0'] + target['kante']
+                or pos[:, 2].min() <= target['z0'] or pos[:, 2].max() >= target['z0'] + target['kante']):
+            raise GeometrieFehler('Track lies outside the requested weltbereich; enlarge or move the world bounds')
+        loch, large_report = large_world.expand(archiv, target)
         # Keep the base mesh bounded in memory for the expanded hole.
         optionen = dict(optionen, welt_uv='echt', zelle=max(32.0, float(optionen.get('zelle', 8.0))))
         zelle = optionen['zelle']
@@ -883,7 +887,8 @@ def geometrie_einsetzen(archiv: erp.ErpFile, netz_npz: str, **optionen) -> dict:
     if welt_uv not in ('konstant', 'echt'):
         raise ValueError('welt_uv: konstant or echt')
     if welt_uv == 'echt':
-        bereich = welt_uv_bereich(loch, pos)
+        bereich = ((loch['x0'], loch['z0'], loch['kante']) if large_report
+                   else welt_uv_bereich(loch, pos))
         vorlagen = dict(vorlagen, _welt_uv_loch=bereich)
         bericht['welt_uv'] = 'echt'
         bericht['welt_uv_bereich'] = [round(v, 3) for v in bereich]

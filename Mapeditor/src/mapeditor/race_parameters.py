@@ -17,7 +17,8 @@ class RaceParametersDialog(QDialog):
         intro.setWordWrap(True)
         layout.addWidget(intro)
         self.large_world = QCheckBox(tr("Expand carrier terrain for large tracks (experimental)"))
-        self.large_world.setChecked(document.project.raw.get('large_world') is True)
+        self.large_world.setChecked(document.project.raw.get('large_world') is True
+                                    or 'weltbereich' in document.project.raw)
         self.large_world.setToolTip(tr("Keeps the original track scale. Rebuild required; in-game compatibility is unverified."))
         layout.addWidget(self.large_world)
         data = document.project.manifest.get("race_parameters", {})
@@ -90,6 +91,7 @@ class RaceParametersDialog(QDialog):
                 raw['large_world'] = True
             else:
                 raw.pop('large_world', None)
+                raw.pop('weltbereich', None)
             if data:
                 manifest["race_parameters"] = data
             else:

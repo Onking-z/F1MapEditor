@@ -4,7 +4,25 @@ import numpy as np
 
 
 def enabled(parameters):
-    return parameters.get('large_world') is True
+    return parameters.get('large_world') is True or 'weltbereich' in parameters
+
+
+def target(parameters, positions):
+    """Explicit bounds are world coordinates after placement, never a track scale."""
+    if 'weltbereich' not in parameters:
+        return bounds(positions)
+    value = parameters['weltbereich']
+    keys = {'mitte_x', 'mitte_z', 'kante_m'}
+    if not isinstance(value, dict) or set(value) != keys:
+        raise ValueError('weltbereich requires mitte_x, mitte_z and kante_m')
+    if any(isinstance(value[k], bool) or not isinstance(value[k], (int, float))
+           or not math.isfinite(value[k]) for k in keys):
+        raise ValueError('weltbereich values must be finite numbers')
+    edge = float(value['kante_m'])
+    if not 2048 <= edge <= 16384:
+        raise ValueError('weltbereich.kante_m must be between 2048 and 16384 m')
+    return dict(x0=float(value['mitte_x'])-edge/2,
+                z0=float(value['mitte_z'])-edge/2, kante=edge)
 
 
 def carrier_raster(reference, meshes):

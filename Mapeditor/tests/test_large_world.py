@@ -58,3 +58,41 @@ def test_carrier_grid_does_not_grow_with_extent():
     assert raster.maximum==(40000,40000)
     codes=raster.zellen(positions,mesh.dreiecke)
     assert (codes&0xffff).max()<16 and (codes>>16).max()<16
+
+
+def test_explicit_world_bounds_override_automatic_extent_without_scaling():
+    points = np.array([[-2659.055, 20, -2441.538], [3509.824, 100, 3914.094]])
+    original = points.copy()
+    params = {'weltbereich': {'mitte_x': 0, 'mitte_z': 0, 'kante_m': 8192}}
+    assert large_world.enabled(params)
+    assert large_world.target(params, points) == dict(x0=-4096., z0=-4096., kante=8192.)
+    assert np.array_equal(points, original)
+    assert large_world.target({'large_world': True}, points) == large_world.bounds(points)
+    shifted = {'weltbereich': {'mitte_x': 500, 'mitte_z': -200, 'kante_m': 4096}}
+    assert large_world.target(shifted, points) == dict(x0=-1548., z0=-2248., kante=4096.)
+
+
+@pytest.mark.parametrize('value', [None, {},
+    *[{'mitte_x': 0, 'mitte_z': 0, 'kante_m': v}
+      for v in (True, '8192', float('nan'), float('inf'), 1024, 20000)],
+    {'mitte_x': 0, 'mitte_z': 0, 'kante_m': 8192, 'extra': 1}])
+def test_invalid_explicit_world_bounds_are_not_silently_ignored(value):
+    with pytest.raises(ValueError, match='weltbereich'):
+        large_world.target({'weltbereich': value}, [[0, 0, 0]])
+
+
+def test_panel_preserves_explicit_world_and_disables_it(app):
+    from mapeditor.document import Document
+    from mapeditor.project import Project
+    from mapeditor.race_parameters import RaceParametersDialog
+    project = Project()
+    project.raw['weltbereich'] = {'mitte_x': 0, 'mitte_z': 0, 'kante_m': 8192}
+    doc = Document(project)
+    dialog = RaceParametersDialog(doc)
+    assert dialog.large_world.isChecked()
+    dialog.accept()
+    assert doc.project.raw['weltbereich']['kante_m'] == 8192
+    dialog = RaceParametersDialog(doc)
+    dialog.large_world.setChecked(False)
+    dialog.accept()
+    assert 'weltbereich' not in doc.project.raw

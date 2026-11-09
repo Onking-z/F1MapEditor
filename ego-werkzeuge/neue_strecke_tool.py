@@ -598,13 +598,15 @@ def cmd_bauen(args):
                 except umg.UmgebungFehler as e:
                     raise BauFehler("Umgebung: %s" % e)
             with open(args.definition, encoding='utf-8-sig') as definition_file:
-                large_world_enabled = json.load(definition_file).get('large_world') is True
+                world_definition = json.load(definition_file)
+            world_options = {k: world_definition[k] for k in ('large_world', 'weltbereich')
+                             if k in world_definition}
             geo = mod.geometrie_einsetzen(a, npz, mauer_physik=args.mauer_physik, trn_flags=args.trn_flags,
                                           hoehe_versatz=args.geometrie_dy, physik_umfang=args.physik_umfang,
                                           physik_kante_max=args.physik_kante_max,
                                           grundflaeche=getattr(args, "grundflaeche", "raster"),
                                           huegel=huegel or None, welt_uv=getattr(args, "welt_uv", "konstant"),
-                                          large_world=large_world_enabled)
+                                          **world_options)
             bericht["schritte"]["geometrie"] = _kurz(geo)
     # --- Minimap (AP11c)
     _phase("minimap")
