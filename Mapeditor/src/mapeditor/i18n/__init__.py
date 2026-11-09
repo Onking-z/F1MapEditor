@@ -24,14 +24,15 @@ from pathlib import Path
 
 HIER = Path(__file__).resolve().parent
 TABELLE = HIER / "texte.csv"
-SPALTEN = ("en", "de", "ort")
-SPRACHEN = {"en": "English", "de": "Deutsch"}
+SPALTEN = ("en", "de", "zh", "ort")
+SPRACHEN = {"en": "English", "de": "Deutsch", "zh": "简体中文"}
 #: Quell- und Standardsprache (English First): Schlüssel im Code, Rückfall für fehlende Übersetzungen
 STANDARD = "en"
 MEHRZAHL_TRENNER = "|"
 
 _sprache = STANDARD
 _cache = {}
+_qt_translator = None
 
 
 def N_(text):
@@ -42,7 +43,9 @@ def N_(text):
 def lade_tabelle(pfad=TABELLE):
     """Zeilen der Übersetzungstabelle als Liste von Dicts (Spalten ``en``, ``de``, ``ort``)."""
     with open(pfad, encoding="utf-8-sig", newline="") as datei:
-        return [dict(zeile) for zeile in csv.DictReader(datei, delimiter=";")]
+        # Git/Excel may store embedded newlines as CRLF; source literals use LF.
+        return [{key: value.replace("\r\n", "\n") if isinstance(value, str) else value
+                 for key, value in zeile.items()} for zeile in csv.DictReader(datei, delimiter=";")]
 
 
 def schreibe_tabelle(zeilen, pfad=TABELLE):
@@ -66,24 +69,38 @@ def _woerterbuch(sprache):
             _cache[sprache] = {z["de"]: z["en"] for z in zeilen if z.get("de") and z.get("en")}
         else:
             _cache[sprache] = {z["en"]: z.get(sprache) or "" for z in zeilen if z.get("en")}
+            if sprache == "zh":
+                for z in zeilen:
+                    if z.get("de") and z.get("zh"):
+                        _cache[sprache].setdefault(z["de"], z["zh"])
     return _cache[sprache]
 
 
 def sprache():
-    """Aktive Oberflächensprache (``de`` oder ``en``)."""
+    """Aktive Oberflächensprache (``de``, ``en`` oder ``zh``)."""
     return _sprache
 
 
 def setze_sprache(code):
     """Sprache für alle danach erzeugten Texte setzen (Fenster neu aufbauen, damit alles umschaltet)."""
-    global _sprache
+    global _sprache, _qt_translator
     code = (code or STANDARD).strip().lower()[:2]
     if code not in SPRACHEN:
         raise ValueError(f"Unbekannte Sprache: {code} (erlaubt: {', '.join(SPRACHEN)})")
     _sprache = code
     try:
-        from PySide6.QtCore import QLocale
+        from PySide6.QtCore import QCoreApplication, QLibraryInfo, QLocale, QTranslator
         QLocale.setDefault(qlocale())
+        application = QCoreApplication.instance()
+        if application is not None:
+            if _qt_translator is not None:
+                application.removeTranslator(_qt_translator)
+                _qt_translator = None
+            if code == "zh":
+                translator = QTranslator(application)
+                if translator.load("qtbase_zh_CN", QLibraryInfo.path(QLibraryInfo.TranslationsPath)):
+                    application.installTranslator(translator)
+                    _qt_translator = translator
     except ImportError:        # pragma: no cover - nur ohne Qt
         pass
     return _sprache
@@ -94,12 +111,14 @@ def qlocale():
     from PySide6.QtCore import QLocale
     if _sprache == "en":
         return QLocale(QLocale.English, QLocale.UnitedStates)
+    if _sprache == "zh":
+        return QLocale(QLocale.Chinese, QLocale.China)
     return QLocale(QLocale.German, QLocale.Germany)
 
 
 def dezimal(text):
     """Mit ``f"{x:.1f}"`` formatierten Text in die Sprache bringen: deutsch Dezimalkomma, englisch unverändert."""
-    return text if _sprache == "en" else text.replace(".", ",")
+    return text.replace(".", ",") if _sprache == "de" else text
 
 
 def _nachschlagen(text):

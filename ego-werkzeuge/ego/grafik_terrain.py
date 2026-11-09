@@ -193,7 +193,7 @@ def _huelle(pos):
     mn, mx = pos.min(0), pos.max(0)
     c = (mn + mx) * np.float32(0.5)
     # Nach außen runden: die gespeicherte Kugel soll die Punkte sicher enthalten.
-    r = np.nextafter(np.float32(np.linalg.norm((mx - mn) * np.float32(0.5))), np.float32(np.inf))
+    r = np.nextafter(np.float32(np.linalg.norm(pos.astype(float) - c.astype(float), axis=1).max()), np.float32(np.inf))
     return tuple(float(v) for v in (*c, r, *mn, 0, *mx, 0))
 
 

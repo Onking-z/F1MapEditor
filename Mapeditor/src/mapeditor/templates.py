@@ -17,6 +17,7 @@ KINDS = (
     ("tum", N_("TUM race track (CSV: x_m, y_m, w_tr_right_m, w_tr_left_m)"), N_("TUM CSV (*.csv);;All files (*)")),
     ("gpx", N_("GPS track (GPX, circuit)"), N_("GPX (*.gpx);;All files (*)")),
     ("spiel", N_("Game track from F1 25 (read-only)"), N_("ERP or mod package (*.erp *.zip);;All files (*)")),
+    ("track_csv", N_("Extended track CSV v1 (heights, banking, kerbs and walls)"), N_("Track CSV (*.track.csv *.csv);;All files (*)")),
 )
 
 
@@ -148,8 +149,9 @@ class TemplateDialog(QDialog):
             widget.setVisible(own_file)
         for widget in (self.code, self.code_label):
             widget.setVisible(spiel and entry is None)
-        self.spacing.setVisible(kind != "gpx")
-        self.spacing_label.setVisible(kind != "gpx")
+        self.spacing.setVisible(kind not in ("gpx", "track_csv"))
+        self.spacing_label.setVisible(kind not in ("gpx", "track_csv"))
+        self.fit.setVisible(kind != "track_csv")
         if kind == "spiel":
             texte = [tr("Imports centre line, heights and widths, optionally also pit lane, zones, starting grid, side "
                         "areas and scenery. If the track does not fit into the game world, it is rotated first.")]
@@ -167,6 +169,7 @@ class TemplateDialog(QDialog):
             self.hint.setText("\n".join(texte))
         else:
             self.hint.setText({
+                "track_csv": tr("Imports original samples without scaling: widths, elevation, banking and side-area settings. The generator may smooth side areas and adjust wall distances. Optional blank cells use generator defaults."),
                 "tum": tr(("TUM database (LGPL-3.0): centreline and widths, without heights. Axes: z = −y, right/left "
                            "widths are kept.")),
                 "gpx": tr("Circuit; the track is resampled at 5 m; width 14 m throughout; heights from <ele>."),

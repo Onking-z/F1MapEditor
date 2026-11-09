@@ -19,6 +19,8 @@ def _rauchtest():
 
     t0 = time.perf_counter()
     app = QApplication(sys.argv[:1])
+    from mapeditor.i18n import setze_sprache, sprache
+    setze_sprache(os.environ.get('MAPEDITOR_TEST_LANGUAGE', 'en'))
     projekt = Path(adapter.toolkit_path()) / "strecke" / "beispiele" / "teststrecke.json"
     window = MainWindow(Project.open(projekt))
     window.show()
@@ -28,11 +30,17 @@ def _rauchtest():
         app.processEvents()
         time.sleep(0.02)
     ok = window.preview is not None
+    from mapeditor.race_parameters import RaceParametersDialog
+    panel = RaceParametersDialog(window.document)
+    panel_title = panel.windowTitle()
+    large_world_label = panel.large_world.text()
+    panel.close()
     bericht = {"ok": ok, "fenster_s": round(t_fenster, 2),
                "vorschau_s": round(time.perf_counter() - t0, 2),
                "werkzeugkasten": str(adapter.toolkit_path()),
                "stationen": len(window.preview["curvature"]) if ok else 0,
-               "status": window.status_label.text()}
+               "status": window.status_label.text(), "language": sprache(),
+               "race_parameters": panel_title, "large_world": large_world_label}
     print(json.dumps(bericht, ensure_ascii=False))
     window.close()
     return 0 if ok else 1

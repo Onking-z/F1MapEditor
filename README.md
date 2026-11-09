@@ -22,7 +22,7 @@ German version: [README.de.md](README.de.md)
 - Build a package for the track installer, or swap an installed track directly for testing
 - Or build an addon for [Swofty Launcher](https://f1.swofty.net/), with the track's own name in the game's menus
 
-The interface is available in German and English.
+The interface is available in German, English and Simplified Chinese. Choose **View → Language → 简体中文**, or start the source version with `python -m mapeditor --sprache zh`.
 
 ## Requirements
 

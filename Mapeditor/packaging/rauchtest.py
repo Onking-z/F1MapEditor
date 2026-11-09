@@ -14,7 +14,7 @@ import time
 import zipfile
 from pathlib import Path
 
-ZIEL = Path(__file__).resolve().parents[1] / "dist" / "Mapeditor"
+ZIEL = Path(os.environ.get("MAPEDITOR_TEST_DIST") or Path(__file__).resolve().parents[1] / "dist" / "Mapeditor")
 EXE = ZIEL / "Mapeditor.exe"
 
 

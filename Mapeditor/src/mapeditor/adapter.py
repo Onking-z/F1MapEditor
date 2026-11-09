@@ -735,6 +735,9 @@ def calculate_template(request):
         fit, spacing = bool(request.get("fit")), request.get("spacing") or None
         if kind == "tum":
             raw = importe.tum_csv(path, punktabstand_m=spacing, einpassen=fit)
+        elif kind == "track_csv":
+            from strecke.track_csv import load
+            raw = load(path)
         elif kind == "gpx":
             raw = importe.gpx(path, einpassen=fit)
         elif kind == "spiel":

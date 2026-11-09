@@ -11,7 +11,7 @@ def ensure_fonts(application):
     # Nur lesen und registrieren; keine Schriftdateien ins Projekt kopieren.
     if not QFontDatabase.families():
         fonts = Path(os.environ.get("WINDIR", "C:/Windows")) / "Fonts"
-        for name in ("segoeui.ttf", "segoeuib.ttf", "segoeuii.ttf"):
+        for name in ("segoeui.ttf", "segoeuib.ttf", "segoeuii.ttf", "msyh.ttc"):
             path = fonts / name
             if path.is_file():
                 QFontDatabase.addApplicationFont(str(path))

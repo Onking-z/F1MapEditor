@@ -597,11 +597,14 @@ def cmd_bauen(args):
                     huegel += umg.huegel_welt(umg.laden(args.umgebung), platzierung.VERSATZ)
                 except umg.UmgebungFehler as e:
                     raise BauFehler("Umgebung: %s" % e)
+            with open(args.definition, encoding='utf-8-sig') as definition_file:
+                large_world_enabled = json.load(definition_file).get('large_world') is True
             geo = mod.geometrie_einsetzen(a, npz, mauer_physik=args.mauer_physik, trn_flags=args.trn_flags,
                                           hoehe_versatz=args.geometrie_dy, physik_umfang=args.physik_umfang,
                                           physik_kante_max=args.physik_kante_max,
                                           grundflaeche=getattr(args, "grundflaeche", "raster"),
-                                          huegel=huegel or None, welt_uv=getattr(args, "welt_uv", "konstant"))
+                                          huegel=huegel or None, welt_uv=getattr(args, "welt_uv", "konstant"),
+                                          large_world=large_world_enabled)
             bericht["schritte"]["geometrie"] = _kurz(geo)
     # --- Minimap (AP11c)
     _phase("minimap")
@@ -731,7 +734,8 @@ def cmd_bauen(args):
         _log("Weltkarten (Biom %s, Farbton %s) …" % (args.biom, args.farbton))
         ideal = dict(lg["ideallinie"], position=platzierung.punkte(np.asarray(lg["ideallinie"]["position"], float)))
         bericht["schritte"]["weltkarten"], welt_mips = spiel_weltkarten.weltkarten_einsetzen(
-            a, zustand.code, npz, ideal, biom=args.biom, farbton=args.farbton)
+            a, zustand.code, npz, ideal, biom=args.biom, farbton=args.farbton,
+            bereich=geo.get('welt_uv_bereich') if geo and geo.get('aussen', {}).get('enabled') else None)
     # --- ERP schreiben: zuerst Original-PVS-Variante, dann PVS „alles sichtbar“
     _phase("erp_schreiben")
     erp_b = os.path.join(aus, args.name + "_original_pvs.erp")
@@ -841,8 +845,12 @@ def cmd_bauen(args):
             zusatz = renndaten.aus_logik(lg, lg["laenge_m"])
             bericht["renndaten"] = zusatz["bericht"]
             _log("Renndaten: %s" % (zusatz["bericht"],))
-            if args.streckencode == streckencode.STANDARD_ALT:
-                streckencode.zusatz_anhaengen(neu_manifest, zusatz)
+        if getattr(args, "race_parameters", None):
+            from strecke import rennparameter
+            zusatz = rennparameter.apply(neu_manifest, zusatz, args.race_parameters)
+            bericht["race_parameters"] = args.race_parameters
+        if zusatz and args.streckencode == streckencode.STANDARD_ALT:
+            streckencode.zusatz_anhaengen(neu_manifest, zusatz)
         mm = minimap_json if minimap_json is not None else minimap_roh
         if args.pruefregeln != "aus":
             m = []
@@ -1176,6 +1184,11 @@ def _vorbereiten(args):
         return
     if getattr(args, "projekt", None):
         args.definition, man = projekt_laden(args.projekt)
+        from strecke import rennparameter
+        try:
+            args.race_parameters = rennparameter.validate(man.get("race_parameters", {}))
+        except ValueError as error:
+            raise BauFehler(str(error)) from error
         if args.versatz is None and man.get("versatz") is not None:
             args.versatz = ",".join(str(float(x)) for x in man["versatz"])
         if getattr(args, "umgebung", None) is None and not getattr(args, "ohne_umgebung", False):
@@ -1219,7 +1232,10 @@ def _vorbereiten(args):
         _pfad_pruefen(p)
     args.eingabe_info = None
     if json_modus or args.schnappschuss:
-        args.definition, args.eingabe_info = schnappschuss(args.definition, os.path.join(args.ausgabe, "eingabe"))
+        try:
+            args.definition, args.eingabe_info = schnappschuss(args.definition, os.path.join(args.ausgabe, "eingabe"))
+        except OSError as error:
+            raise BauFehler("Cannot write build workspace %s: %s" % (args.ausgabe, error)) from error
         args.neu_erzeugen = True
         if args.umgebung:   # AP-U1: Umgebungsdatei ebenfalls einfrieren
             with open(args.umgebung, "rb") as f:

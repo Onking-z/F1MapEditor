@@ -864,6 +864,13 @@ def geometrie_einsetzen(archiv: erp.ErpFile, netz_npz: str, **optionen) -> dict:
     codes = sorted({c for _, c in KLASSEN.values()} | {GRUND[1]})
     vorlagen = optionen.get('vorlagen') or vorlagen_lesen(archiv, materialien, codes)
     loch = loch_lesen(archiv)
+    large_report = None
+    if optionen.get('large_world'):
+        from . import large_world
+        loch, large_report = large_world.expand(archiv, large_world.bounds(pos))
+        # Keep the base mesh bounded in memory for the expanded hole.
+        optionen = dict(optionen, welt_uv='echt', zelle=max(32.0, float(optionen.get('zelle', 8.0))))
+        zelle = optionen['zelle']
     bericht = dict(platzierung=dict(versatz=list(platzierung.VERSATZ)),
                    vorlagen={k: v for k, v in vorlagen.items()},
                    loch=dict(x0=loch['x0'], z0=loch['z0'], kante=loch['kante'],
@@ -917,7 +924,10 @@ def geometrie_einsetzen(archiv: erp.ErpFile, netz_npz: str, **optionen) -> dict:
             farben=np.tile(vorlagen['farben'][GRUND[0]], (len(ids), 1)).astype(np.float64),
             uv_welt=welt, uv_zusatz=np.c_[uv0, welt], normale_w=np.zeros(len(ids))))
         info['grundflaeche'] = dict(material=GRUND[0], dreiecke=int(len(lokal)), vertices=int(len(ids)))
-    kontrolle = gt.terrain_erzeugen(archiv, TERRAIN, netze)
+    terrain_options = {}
+    if large_report:
+        terrain_options['raster'] = large_world.carrier_raster(t, netze)
+    kontrolle = gt.terrain_erzeugen(archiv, TERRAIN, netze, **terrain_options)
     # --- Physik
     p_teile, t_teile, c_teile, a_teile, g_teile = [], [], [], [], []
     basis = 0
@@ -1026,4 +1036,7 @@ def geometrie_einsetzen(archiv: erp.ErpFile, netz_npz: str, **optionen) -> dict:
     bericht['aussen'] = dict(kennung=AUSSEN, geaendert=False,
                              grund='Strecke liegt vollständig im 2048-m-Loch; Grundfläche schließt an den Innenrand an')
     bericht['geaenderte_ressourcen'] = sorted(set(kontrolle['ressourcen']) | {physik_res.identifier})
+    if large_report:
+        bericht['aussen'] = dict(kennung=AUSSEN, geaendert=True, **large_report)
+        bericht['geaenderte_ressourcen'] = sorted(set(bericht['geaenderte_ressourcen']) | set(large_report['resources']))
     return _json(bericht)

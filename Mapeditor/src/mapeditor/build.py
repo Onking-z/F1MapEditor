@@ -8,6 +8,7 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import tempfile
 import uuid
 import zipfile
 
@@ -112,10 +113,22 @@ def space_text(work, packages):
         return tr("Storage cannot be checked: {error}", error=error)
 
 
+def default_build_base(project):
+    return project.folder or (Path(os.environ.get('LOCALAPPDATA') or Path.home() / '.local' / 'share') / 'Mapeditor')
+
+
+def probe_build_folder(path):
+    path = writable_path(path)
+    path.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryFile(dir=path) as stream:
+        stream.write(b'mapeditor-write-check')
+        stream.flush()
+
+
 def build_folders(project, output=None, packages=None):
     """Arbeits- und Paketordner: Dialogfelder, sonst Projekteinstellung, sonst <Projekt>/bauten und /pakete."""
     settings = project.manifest.get("bauen", {})
-    base = project.folder or (Path.home() / "Documents" / "Mapeditor")
+    base = default_build_base(project)
     return (writable_path(output or settings.get("ausgabe", str(base / "bauten"))),
             writable_path(packages or settings.get("pakete", str(base / "pakete"))))
 
@@ -249,7 +262,7 @@ class BuildDialog(QDialog):
         hint.setWordWrap(True)
         layout.addWidget(hint)
         settings = self.project.manifest.get("bauen", {})
-        base = self.project.folder or (Path.home() / "Documents" / "Mapeditor")
+        base = default_build_base(self.project)
         self.fields = QWidget()
         fields_layout = QVBoxLayout(self.fields)
         fields_layout.setContentsMargins(0, 0, 0, 0)
@@ -908,6 +921,13 @@ class BuildDialog(QDialog):
             build_command(root, self.project.basis, output, packages, self.name.text(), carrier=carrier,
                           options=self.options())
             check_space(output, packages)
+            for folder, field in ((output, self.output), (packages, self.packages)):
+                try:
+                    probe_build_folder(folder)
+                except OSError as error:
+                    self.paths_toggle.setChecked(True)
+                    field.setFocus()
+                    raise ValueError(tr("Cannot write to {path}. Choose a writable folder.", path=folder)) from error
             settings = {"ausgabe": str(output), "pakete": str(packages), "traeger": str(carrier),
                         "ki_profil": self.ki_profil.isChecked(), **self.options()}
             self.main.document.edit(tr("Change build settings"), lambda raw, meta: meta.update(bauen=settings))

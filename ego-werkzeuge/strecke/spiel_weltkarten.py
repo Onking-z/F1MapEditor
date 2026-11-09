@@ -162,11 +162,11 @@ def klassenraster(npz, bereich):
     return masken
 
 
-def innenkarten(a, arbeit, npz, tag="bau", flecken_bis_m=None, bewuchs=True):
+def innenkarten(a, arbeit, npz, tag="bau", flecken_bis_m=None, bewuchs=True, bereich=None):
     """``flecken_bis_m``: Erdflecken nur bis zu diesem Abstand von harten Flächen (Spielbild W6: auf Hügeln hart begrenzt
     und mit sichtbar kachelnder Erdtextur); None = überall. ``bewuchs=False``: Grashöhe 0, kein Bodenbewuchs (Wüste).
     ``arbeit``: Ordner für PNG-Kopien der Karten oder None."""
-    bereich = welt_bereich(npz)
+    bereich = welt_bereich(npz) if bereich is None else tuple(bereich)
     m_je_texel = bereich[2] / N
     masken = klassenraster(npz, bereich)
     fahrbahn = np.zeros((N, N), bool)
@@ -440,7 +440,7 @@ def farbton_setzen(a, farbton):
     return {"grasmaterialien": n, "faktor": [float(v) for v in f]}
 
 
-def weltkarten_einsetzen(a, code, npz, ideallinie, biom="standard", farbton="standard", spielordner=None, arbeit=None):
+def weltkarten_einsetzen(a, code, npz, ideallinie, biom="standard", farbton="standard", spielordner=None, arbeit=None, bereich=None):
     """Alle Weltkarten in das Archiv ``a``: Boden, TrackInfo, Außenterrain, optional Biom und Farbton.
 
     Muss nach Geometrie und Bergen laufen; die Strecke braucht echte Welt-UV. Rückgabe: (Bericht, Mip-Dateien fürs Paket)."""
@@ -449,7 +449,7 @@ def weltkarten_einsetzen(a, code, npz, ideallinie, biom="standard", farbton="sta
     if farbton not in FARBTOENE:
         raise ValueError("Colour tone %r unknown" % farbton)
     bericht = {"biom": biom, "farbton": farbton}
-    bericht["innen"] = innenkarten(a, arbeit, npz, flecken_bis_m=40.0, bewuchs=biom != "wueste")
+    bericht["innen"] = innenkarten(a, arbeit, npz, flecken_bis_m=40.0, bewuchs=biom != "wueste", bereich=bereich)
     z, w, breite = ideallinie_stationen(a, ideallinie)
     bericht["trackinfo"] = karte_schreiben(a, "por_trackinfo_a_01_inf", trackinfo_bild(z, w, breite), arbeit, "bau")
     faktor = np.array(FARBTOENE[farbton])

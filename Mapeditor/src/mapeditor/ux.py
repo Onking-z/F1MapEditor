@@ -42,12 +42,14 @@ def edit_text(value):
         text = f"{value:.3f}".rstrip("0").rstrip(".")
         if text in ("-0",):
             return "0"
-        return text if sprache() == "en" else text.replace(".", ",")
+        return text.replace(".", ",") if sprache() == "de" else text
     return None
 
 
 BOOL_WORDS = {"ja": True, "nein": False, "true": True, "false": False, "an": True, "aus": False,
-              "yes": True, "no": False, "on": True, "off": False}
+              "yes": True, "no": False, "on": True, "off": False,
+              "是": True, "否": False, "开": True, "关": False,
+              "开启": True, "关闭": False, "启用": True, "禁用": False}
 
 #: Feste Auswahlwerte für Eigenschaften (Editor als Klappliste statt Freitext)
 CHOICES = {

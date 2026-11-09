@@ -35,8 +35,8 @@ def main(argv=None):
     parser._positionals.title = "positional arguments"
     parser._optionals.title = "options"
     parser.add_argument("projekt", nargs="?", help="project folder, manifest or definition JSON")
-    parser.add_argument("--sprache", choices=["en", "de"],
-                        help="interface language for this start (en/de); otherwise the saved choice (View → Language), "
+    parser.add_argument("--sprache", choices=["en", "de", "zh"],
+                        help="interface language for this start (en/de/zh); otherwise the saved choice (View → Language), "
                              "otherwise English")
     args = parser.parse_args(argv)
     app = QApplication(sys.argv[:1])

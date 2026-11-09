@@ -1319,6 +1319,10 @@ def _generator_pruefen(erg, d, v, m):
                              % (int(aussen.sum()), AO_HALBBREITE_M), ort(None, None, netz["vertices"][i] + v, "Netz"),
                              ist=int(aussen.sum()), soll=0, stufe="generator"))
         x0, z0, kante = LOCH_AUSSENTERRAIN
+        from . import large_world
+        if large_world.enabled(d.param):
+            planned = large_world.bounds(V)
+            x0, z0, kante = planned['x0'], planned['z0'], planned['kante']
         lo, hi = V.min(axis=0), V.max(axis=0)
         if lo[0] <= x0 or hi[0] >= x0 + kante or lo[1] <= z0 or hi[1] >= z0 + kante:
             groesse = hi - lo

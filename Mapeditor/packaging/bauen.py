@@ -72,7 +72,7 @@ def beschneiden(ziel):
         for p in qt.glob(muster):
             p.unlink()
     for p in (qt / "translations").glob("*.qm"):
-        if p.name not in ("qt_de.qm", "qt_en.qm", "qtbase_de.qm", "qtbase_en.qm"):
+        if p.name not in ("qt_de.qm", "qt_en.qm", "qtbase_de.qm", "qtbase_en.qm", "qt_zh_CN.qm", "qtbase_zh_CN.qm"):
             p.unlink()
     print(f"Beschnitten: {(vorher - groesse(ziel)) / 1e6:.0f} MB")
 
